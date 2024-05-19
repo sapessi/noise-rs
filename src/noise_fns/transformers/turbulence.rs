@@ -3,7 +3,7 @@ use crate::noise_fns::{Fbm, MultiFractal, NoiseFn, Seedable};
 /// Noise function that randomly displaces the input value before returning the
 /// output value from the source function.
 ///
-/// _ is the pseudo-random displacement of the input value. The
+/// _Turbulence_ is the pseudo-random displacement of the input value. The
 /// get() method randomly displaces the coordinates of the input value before
 /// retrieving the output value from the source function. To control the
 /// turbulence, an application can modify its frequency, its power, and its
