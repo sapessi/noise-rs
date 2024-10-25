@@ -1,6 +1,24 @@
+use alloc::boxed::Box;
+
 use crate::{math::interpolate, utils::NoiseMap, NoiseFn};
 
 use super::{NoiseFnWrapper, NoiseMapBuilder};
+
+/// The callback function triggered when there is an update on progress
+///
+/// # Arguments
+/// * `u64`: The total size of the process (width * height)
+/// * `u64`: The current number of of entries processed
+type ProgressCallbackFn = dyn Fn(usize, usize) + Sync + Send + 'static;
+
+/// Callback function configuration to track build progress when running 
+/// asynchronously. Granularity is a number between 1 and 10 that indicates
+/// how often the callback function should be called (1 = for every point,
+/// 10 = every 10 points)
+pub struct ProgressCallbackConfig {
+    callback: Box<ProgressCallbackFn>,
+    granularity: u8,
+}
 
 pub struct PlaneMapBuilder<SourceModule, const DIM: usize>
 where
@@ -11,6 +29,7 @@ where
     y_bounds: (f64, f64),
     size: (usize, usize),
     source_module: SourceModule,
+    callback_config: Option<ProgressCallbackConfig>,
 }
 
 impl<SourceModule, const DIM: usize> PlaneMapBuilder<SourceModule, DIM>
@@ -24,6 +43,7 @@ where
             y_bounds: (-1.0, 1.0),
             size: (100, 100),
             source_module,
+            callback_config: None,
         }
     }
 
@@ -44,6 +64,26 @@ where
     pub fn set_y_bounds(self, lower_y_bound: f64, upper_y_bound: f64) -> Self {
         PlaneMapBuilder {
             y_bounds: (lower_y_bound, upper_y_bound),
+            ..self
+        }
+    }
+
+    pub fn set_progress_callback(
+        self,
+        granularity: u8,
+        callback: impl Fn(usize, usize) + Sync + Send + 'static,
+    ) -> Self {
+        let final_granularity = if granularity > 10 {
+            granularity.checked_ilog10().unwrap_or(0) + 1
+        } else {
+            granularity as u32
+        };
+
+        PlaneMapBuilder {
+            callback_config: Some(ProgressCallbackConfig {
+                callback: Box::new(callback),
+                granularity: final_granularity as u8,
+            }),
             ..self
         }
     }
@@ -120,6 +160,12 @@ where
                 };
 
                 result_map[(x, y)] = final_value;
+                if let Some(callback_config) = &self.callback_config {
+                    let progress_pt = y * x;
+                    if progress_pt % callback_config.granularity as usize == 0 {
+                        callback_config.callback.as_ref()(width * height, progress_pt);
+                    }
+                }
             }
         }
 
@@ -138,6 +184,7 @@ where
             y_bounds: (-1.0, 1.0),
             size: (100, 100),
             source_module: NoiseFnWrapper { source_fn },
+            callback_config: None,
         }
     }
 
@@ -190,6 +237,12 @@ where
                 };
 
                 result_map[(x, y)] = final_value;
+                if let Some(callback_config) = &self.callback_config {
+                    let progress_pt = y * x;
+                    if progress_pt % callback_config.granularity as usize == 0 {
+                        callback_config.callback.as_ref()(width * height, progress_pt);
+                    }
+                }
             }
         }
 
@@ -242,6 +295,12 @@ where
                 };
 
                 result_map[(x, y)] = final_value;
+                if let Some(callback_config) = &self.callback_config {
+                    let progress_pt = y * x;
+                    if progress_pt % callback_config.granularity as usize == 0 {
+                        callback_config.callback.as_ref()(width * height, progress_pt);
+                    }
+                }
             }
         }
 
@@ -297,6 +356,12 @@ where
                 };
 
                 result_map[(x, y)] = final_value;
+                if let Some(callback_config) = &self.callback_config {
+                    let progress_pt = y * x;
+                    if progress_pt % callback_config.granularity as usize == 0 {
+                        callback_config.callback.as_ref()(width * height, progress_pt);
+                    }
+                }
             }
         }
 
